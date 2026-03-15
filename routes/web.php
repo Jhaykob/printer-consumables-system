@@ -2,72 +2,87 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PrinterLocationController;
+use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ColorController;
-use App\Http\Controllers\PrinterController;
-use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ConsumableTypeController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ConsumableRequestController;
+use App\Http\Controllers\AdminRequestController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AuditLogController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes
+| Public Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
 */
 
-// Public landing page
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Dashboard (Requires user to be logged in and verified)
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// All authenticated routes
+
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth')->group(function () {
 
-    // --- Standard Profile Routes (Laravel Breeze) ---
+    // --- BREEZE PROFILE ROUTES ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // --- STANDARD USER REQUESTS (Everyone can access) ---
+    Route::resource('requests', ConsumableRequestController::class)->only(['index', 'create', 'store']);
 
-    // --- User & Permission Management ---
-    // Protected by the 'manage-users' Gate defined in AppServiceProvider
-    Route::middleware('can:manage-users')->group(function () {
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    // --- AJAX CASCADING DROPDOWNS (For the Request Form) ---
+    Route::get('/api/departments/{department}/locations', [ConsumableRequestController::class, 'getLocationsByDepartment']);
+    Route::get('/api/departments/{department}/locations/{location}/printers', [ConsumableRequestController::class, 'getPrintersByLocation']);
+    Route::get('/api/printers/{printer}/inventory', [ConsumableRequestController::class, 'getInventory']);
+
+
+    /*
+    |----------------------------------------------------------------------
+    | Administrator Routes (Protected by Gates inside Controllers)
+    |----------------------------------------------------------------------
+    */
+
+    // --- ASSET MANAGEMENT (Gate: manage-assets) ---
+    Route::resource('departments', DepartmentController::class)->except(['show', 'create', 'edit', 'update']);
+    Route::resource('locations', PrinterLocationController::class);
+    Route::resource('printers', PrinterController::class);
+    Route::resource('categories', CategoryController::class);
+    Route::resource('colors', ColorController::class);
+    Route::resource('types', ConsumableTypeController::class);
+    Route::resource('inventory', InventoryController::class);
+
+
+    // --- INVENTORY FULFILLMENT & REPORTS (Gate: manage-inventory) ---
+    Route::middleware('can:manage-inventory')->group(function () {
+        Route::get('/admin/requests', [AdminRequestController::class, 'index'])->name('admin.requests.index');
+        Route::patch('/admin/request-items/{requestItem}', [AdminRequestController::class, 'updateItem'])->name('admin.request-items.update');
+
+        Route::get('/admin/reports', [ReportController::class, 'index'])->name('admin.reports.index');
     });
 
 
-    // --- Asset Management: Printer Locations ---
-    // Anyone logged in can view the locations index.
-    // The controller protects store/update/destroy using Gate::authorize('manage-assets').
-    // The Blade view uses @can('manage-assets') to hide the Add/Delete buttons.
-    Route::resource('locations', PrinterLocationController::class)->except(['show', 'create', 'edit']);
+    // --- USER MANAGEMENT & AUDIT LOGS (Gate: manage-users) ---
+    Route::middleware('can:manage-users')->group(function () {
+        Route::resource('users', UserController::class);
 
-    Route::resource('printers', PrinterController::class)->except(['show', 'create', 'edit']);
-
-    Route::resource('categories', CategoryController::class)->except(['show', 'create', 'edit', 'update']);
-    Route::resource('colors', ColorController::class)->except(['show', 'create', 'edit', 'update']);
-
-    Route::resource('consumable-types', ConsumableTypeController::class)->except(['show', 'create', 'edit', 'update']);
-
-    Route::resource('inventory', InventoryController::class)->except(['show', 'create', 'edit', 'update']);
-
-    // Standard users can access these without special permissions
-    Route::resource('requests', ConsumableRequestController::class)->only(['index', 'create', 'store']);
+        Route::get('/admin/logs', [AuditLogController::class, 'index'])->name('admin.logs.index');
+    });
 });
 
-// Load the default authentication routes (Login, Register, Password Reset, etc.)
 require __DIR__ . '/auth.php';

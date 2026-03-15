@@ -5,6 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use App\Models\Inventory;
+use App\Models\Printer;
+use App\Models\RequestItem;
+use App\Observers\AuditObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,5 +39,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-inventory', function ($user) {
             return $user->is_superuser || $user->hasPermission('manage-inventory');
         });
+
+        // Activate the Observers
+        Inventory::observe(AuditObserver::class);
+        Printer::observe(AuditObserver::class);
+        RequestItem::observe(AuditObserver::class);
     }
 }
