@@ -1,166 +1,108 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-red-600 leading-tight">
-            {{ __('All User Requests (Admin)') }}
-        </h2>
+        <div class="flex justify-between items-center">
+            <h2 class="font-semibold text-xl text-red-600 leading-tight uppercase tracking-wide">
+                Fulfillment Dashboard
+            </h2>
+            <div class="text-sm font-bold text-gray-500 uppercase tracking-widest bg-white px-4 py-2 rounded shadow-sm border border-gray-100">
+                Pending Requests: <span class="text-red-600 ml-1">{{ $requests->where('status', 'Pending')->count() ?? 0 }}</span>
+            </div>
+        </div>
     </x-slot>
 
-    <div class="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-        @error('stock_error')
-            <div class="p-4 bg-red-100 border-l-4 border-red-600 text-red-800 font-bold rounded shadow-sm">
-                {{ $message }}
-            </div>
-        @enderror
-
-        @if(session('status'))
-            <div class="p-4 bg-green-100 border-l-4 border-green-600 text-green-800 font-bold rounded shadow-sm">
-                {{ session('status') }}
+        @if (session('success'))
+            <div class="mb-6 p-4 bg-green-50 border-l-4 border-green-600 rounded shadow-sm">
+                <div class="font-bold text-green-800">{{ session('success') }}</div>
             </div>
         @endif
 
-        @forelse($requests as $req)
-            <div class="bg-white p-6 shadow-sm sm:rounded-lg border border-gray-200 mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden border-t-4 border-t-red-600">
+            <div class="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-black text-gray-800 uppercase tracking-wide">Supply Queue</h3>
+                <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">Review & Process</p>
+            </div>
 
-                <div class="border-b pb-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg font-bold text-gray-900">REQ-{{ str_pad($req->id, 4, '0', STR_PAD_LEFT) }}</span>
-                    </div>
-                    <div class="text-sm text-gray-500 mt-1">
-                        Requested by <span class="font-bold text-gray-700">{{ $req->user->name }}</span> on {{ $req->created_at->format('d M Y, h:i A') }}
-                    </div>
-                    <div class="text-sm text-gray-600 mt-1">
-                        <strong>Destination:</strong>
-                        {{ $req->department->name ?? 'N/A' }}
-                        &rarr; {{ $req->location->name ?? 'N/A' }}
-                        &rarr; {{ $req->printer->name ?? 'N/A' }}
-                    </div>
-                    @if($req->notes)
-                    <div class="mt-2 p-2 bg-gray-50 text-sm italic text-gray-600 border rounded">
-                        "{{ $req->notes }}"
-                    </div>
-                    @endif
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white border-b border-gray-200">
+                            <th class="py-4 px-6 text-xs font-black text-gray-400 uppercase tracking-widest">Req ID / Date</th>
+                            <th class="py-4 px-6 text-xs font-black text-gray-400 uppercase tracking-widest">Requested By</th>
+                            <th class="py-4 px-6 text-xs font-black text-gray-400 uppercase tracking-widest">Items</th>
+                            <th class="py-4 px-6 text-xs font-black text-gray-400 uppercase tracking-widest">Status</th>
+                            <th class="py-4 px-6 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse($requests as $req)
+                        <tr class="hover:bg-gray-50 transition-colors {{ $req->status === 'Pending' ? 'bg-orange-50/30' : '' }}">
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-600">
-                        <thead class="bg-gray-100 text-gray-900">
-                            <tr>
-                                <th class="py-3 px-4">Item Requested</th>
-                                <th class="py-3 px-4 text-center">Qty Asked</th>
-                                <th class="py-3 px-4 text-center">Qty Given</th>
-                                <th class="py-3 px-4 text-center">Stock</th>
-                                <th class="py-3 px-4">Current Status</th>
-                                <th class="py-3 px-4 min-w-[300px]">Admin Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($req->items as $item)
-                            <tr class="border-b last:border-0 hover:bg-gray-50">
+                            <td class="py-4 px-6">
+                                <div class="font-black text-gray-800 tracking-wider">#REQ-{{ str_pad($req->id, 4, '0', STR_PAD_LEFT) }}</div>
+                                <div class="text-[10px] text-gray-500 font-bold uppercase mt-1">{{ $req->created_at->format('d M Y, h:i A') }}</div>
+                            </td>
 
-                                <td class="py-3 px-4 font-bold">
-                                    {{ $item->inventory->consumableType->name ?? 'Deleted Item' }}
-                                    <span class="block text-xs text-gray-500 font-normal">{{ $item->inventory->color->name ?? 'N/A' }}</span>
-                                </td>
+                            <td class="py-4 px-6">
+                                <div class="font-bold text-gray-900">{{ $req->user->name ?? 'Unknown User' }}</div>
+                                <div class="text-xs text-gray-500">{{ $req->department->name ?? 'No Dept' }}</div>
+                            </td>
 
-                                <td class="py-3 px-4 text-center font-bold text-lg text-gray-700">{{ $item->quantity }}</td>
-                                <td class="py-3 px-4 text-center font-bold text-lg text-green-600">{{ $item->fulfilled_quantity ?? '-' }}</td>
-                                <td class="py-3 px-4 text-center {{ ($item->inventory->stock_level ?? 0) < $item->quantity ? 'text-red-600 font-bold' : 'text-gray-900 font-bold' }}">
-                                    {{ $item->inventory->stock_level ?? 'N/A' }}
-                                </td>
+                            <td class="py-4 px-6">
+                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded border border-gray-200">
+                                    {{ $req->items->count() ?? 0 }} Items
+                                </span>
+                            </td>
 
-                                <td class="py-3 px-4">
-                                    <span class="px-2 py-1 text-xs font-bold rounded-full uppercase
-                                        {{ $item->status == 'Pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                        {{ $item->status == 'Approved' ? 'bg-blue-100 text-blue-800' : '' }}
-                                        {{ $item->status == 'Denied' ? 'bg-red-100 text-red-800' : '' }}
-                                        {{ $item->status == 'Fulfilled' ? 'bg-green-100 text-green-800' : '' }}
-                                        {{ $item->status == 'Recalled' ? 'bg-gray-200 text-gray-800' : '' }}
-                                    ">
-                                        {{ $item->status }}
+                            <td class="py-4 px-6">
+                                @if($req->status === 'Pending')
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-orange-100 text-orange-800 text-[10px] font-black uppercase tracking-widest border border-orange-200">
+                                        Pending
                                     </span>
+                                @elseif($req->status === 'Fulfilled')
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-green-100 text-green-800 text-[10px] font-black uppercase tracking-widest border border-green-200">
+                                        Fulfilled
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-red-100 text-red-800 text-[10px] font-black uppercase tracking-widest border border-red-200">
+                                        {{ $req->status }}
+                                    </span>
+                                @endif
+                            </td>
 
-                                    @if($item->status == 'Denied')
-                                        <div class="text-xs text-red-600 mt-1 italic">Reason: {{ $item->rejection_reason }}</div>
-                                    @endif
-                                    @if($item->status == 'Recalled')
-                                        <div class="text-xs text-gray-600 mt-1 italic">Reason: {{ $item->recall_reason }} ({{ ucfirst($item->recall_action) }})</div>
-                                    @endif
-                                </td>
+                            <td class="py-4 px-6 text-right">
+                                @if($req->status === 'Pending')
+                                    <a href="{{ route('admin.requests.show', $req->id) }}" class="inline-block px-4 py-2 bg-red-600 text-white font-black uppercase tracking-widest text-[10px] rounded shadow-sm hover:bg-red-700 hover:-translate-y-0.5 transition-all">
+                                        Process
+                                    </a>
+                                @else
+                                    <a href="{{ route('admin.requests.show', $req->id) }}" class="inline-block px-4 py-2 bg-white border border-gray-300 text-gray-700 font-black uppercase tracking-widest text-[10px] rounded hover:bg-gray-50 transition-colors">
+                                        View Details
+                                    </a>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="py-12 text-center">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 text-gray-400 mb-4">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                                </div>
+                                <h3 class="text-sm font-black text-gray-500 uppercase tracking-widest">No Requests Found</h3>
+                                <p class="text-xs text-gray-400 mt-1">The supply queue is currently empty.</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
-                                <td class="py-3 px-4">
-                                    <form action="{{ route('admin.request-items.update', $item) }}" method="POST" class="flex flex-col gap-2">
-                                        @csrf @method('PATCH')
-
-                                        <div class="flex gap-2">
-                                            <select name="status" class="status-select border-gray-300 rounded text-sm py-1 flex-1" onchange="toggleReasonFields(this)">
-                                                <option value="Pending" {{ $item->status == 'Pending' ? 'selected' : '' }}>Pending</option>
-                                                <option value="Approved" {{ $item->status == 'Approved' ? 'selected' : '' }}>Approved</option>
-                                                <option value="Fulfilled" {{ $item->status == 'Fulfilled' ? 'selected' : '' }}>Fulfilled (Deduct Stock)</option>
-                                                <option value="Denied" {{ $item->status == 'Denied' ? 'selected' : '' }}>Denied</option>
-                                                @if($item->status == 'Fulfilled' || $item->status == 'Recalled')
-                                                    <option value="Recalled" {{ $item->status == 'Recalled' ? 'selected' : '' }}>Recalled</option>
-                                                @endif
-                                            </select>
-                                            <button type="submit" class="px-3 py-1 bg-red-600 text-white text-sm font-bold rounded hover:bg-red-700">Save</button>
-                                        </div>
-
-                                        <div class="fulfilled-fields mt-1" style="display: {{ $item->status == 'Fulfilled' ? 'block' : 'none' }};">
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-xs text-gray-500 font-bold">Qty to Give:</span>
-                                                <input type="number" name="fulfilled_quantity"
-                                                       value="{{ $item->fulfilled_quantity ?? min($item->quantity, $item->inventory->stock_level ?? 0) }}"
-                                                       min="1"
-                                                       class="w-24 border-gray-300 rounded text-sm py-1 focus:ring-red-500 focus:border-red-500">
-                                            </div>
-                                        </div>
-
-                                        <div class="denied-fields mt-1" style="display: {{ $item->status == 'Denied' ? 'block' : 'none' }};">
-                                            <input type="text" name="rejection_reason" value="{{ $item->rejection_reason }}" placeholder="Reason for rejection..." class="w-full border-gray-300 rounded text-sm py-1 focus:ring-red-500 focus:border-red-500">
-                                        </div>
-
-                                        <div class="recalled-fields mt-1" style="display: {{ $item->status == 'Recalled' ? 'block' : 'none' }};">
-                                            <input type="text" name="recall_reason" value="{{ $item->recall_reason }}" placeholder="Reason for recall..." class="w-full border-gray-300 rounded text-sm py-1 mb-1 focus:ring-red-500 focus:border-red-500">
-                                            <select name="recall_action" class="w-full border-gray-300 rounded text-sm py-1 focus:ring-red-500 focus:border-red-500">
-                                                <option value="restock" {{ $item->recall_action == 'restock' ? 'selected' : '' }}>Return to Stock (Add Inventory)</option>
-                                                <option value="dispose" {{ $item->recall_action == 'dispose' ? 'selected' : '' }}>Dispose / Damaged (Write-off)</option>
-                                            </select>
-                                        </div>
-                                    </form>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+            @if(method_exists($requests, 'links') && $requests->hasPages())
+                <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                    {{ $requests->links() }}
                 </div>
-            </div>
-        @empty
-            <div class="bg-white p-6 shadow-sm sm:rounded-lg text-center text-gray-500 font-bold">
-                No requests found in the system.
-            </div>
-        @endforelse
+            @endif
+        </div>
     </div>
-
-    <script>
-        function toggleReasonFields(selectElement) {
-            const form = selectElement.closest('form');
-            const fulfilledFields = form.querySelector('.fulfilled-fields');
-            const deniedFields = form.querySelector('.denied-fields');
-            const recalledFields = form.querySelector('.recalled-fields');
-
-            // Hide all dynamic fields first
-            fulfilledFields.style.display = 'none';
-            deniedFields.style.display = 'none';
-            recalledFields.style.display = 'none';
-
-            // Show relevant fields based on the selected dropdown value
-            if (selectElement.value === 'Fulfilled') {
-                fulfilledFields.style.display = 'block';
-            } else if (selectElement.value === 'Denied') {
-                deniedFields.style.display = 'block';
-            } else if (selectElement.value === 'Recalled') {
-                recalledFields.style.display = 'block';
-            }
-        }
-    </script>
 </x-app-layout>

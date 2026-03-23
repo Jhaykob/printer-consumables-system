@@ -8,11 +8,16 @@ use App\Models\ConsumableType;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 
 class PrinterController extends Controller
 {
     public function index()
     {
+        $user = Auth::user(); // Changed from auth()->user()
+        if (!$user->is_superuser && !$user->permissions->contains('name', 'manage-printers')) {
+            abort(403, 'UNAUTHORIZED: You do not have permission to manage printers.');
+        }
         // Eager load the new department relationship
         $printers = Printer::with(['department', 'location', 'consumableTypes'])->orderBy('name')->get();
         $locations = PrinterLocation::orderBy('name')->get();
@@ -71,4 +76,18 @@ class PrinterController extends Controller
         $printer->delete();
         return redirect()->route('printers.index')->with('status', 'Printer removed.');
     }
+
+    // public function __construct()
+    // {
+    //     $this->middleware(function ($request, $next) {
+    //         $user = Auth::user(); // Changed from auth()->user()
+
+    //         // Check if user is null first to prevent errors if not logged in
+    //         if (!$user || (!$user->is_superuser && !$user->permissions->contains('name', 'manage-printers'))) {
+    //             abort(403, 'UNAUTHORIZED: You do not have permission to manage printers.');
+    //         }
+
+    //         return $next($request);
+    //     });
+    // }
 }

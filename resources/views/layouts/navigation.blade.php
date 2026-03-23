@@ -1,10 +1,20 @@
+@php
+    $user = auth()->user();
+    // Safely grab the user's permission names, or an empty array if they have none
+    $userPerms = $user && $user->permissions ? $user->permissions->pluck('name')->toArray() : [];
+    $isSuper = $user ? $user->is_superuser : false;
+@endphp
+
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex">
                 <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-red-600" />
+                    <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
+                        <div class="flex items-center justify-center w-8 h-8 bg-red-50 text-red-600 rounded">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        </div>
+                        <span class="font-black text-gray-900 tracking-tight uppercase leading-none hidden sm:block">Printer <span class="text-red-600">Consumables</span></span>
                     </a>
                 </div>
 
@@ -17,7 +27,7 @@
                         {{ __('My Requests') }}
                     </x-nav-link>
 
-                    @can('manage-assets')
+                    @if($isSuper || in_array('manage-printers', $userPerms) || in_array('manage-system', $userPerms))
                     <div class="hidden sm:flex sm:items-center sm:ms-6">
                         <x-dropdown align="left" width="48">
                             <x-slot name="trigger">
@@ -29,19 +39,25 @@
                                 </button>
                             </x-slot>
                             <x-slot name="content">
-                                <x-dropdown-link :href="route('departments.index')">{{ __('Departments') }}</x-dropdown-link>
-                                <x-dropdown-link :href="route('locations.index')">{{ __('Locations') }}</x-dropdown-link>
-                                <x-dropdown-link :href="route('printers.index')">{{ __('Printers') }}</x-dropdown-link>
-                                <hr class="my-1">
-                                <x-dropdown-link :href="route('categories.index')">{{ __('Categories') }}</x-dropdown-link>
-                                <x-dropdown-link :href="route('colors.index')">{{ __('Colors') }}</x-dropdown-link>
-                                <x-dropdown-link :href="route('types.index')">{{ __('Consumable Types') }}</x-dropdown-link>
+                                @if($isSuper || in_array('manage-system', $userPerms))
+                                    <x-dropdown-link :href="route('departments.index')">{{ __('Departments') }}</x-dropdown-link>
+                                    <x-dropdown-link :href="route('locations.index')">{{ __('Locations') }}</x-dropdown-link>
+                                    <hr class="my-1 border-gray-100">
+                                    <x-dropdown-link :href="route('categories.index')">{{ __('Categories') }}</x-dropdown-link>
+                                    <x-dropdown-link :href="route('colors.index')">{{ __('Colors') }}</x-dropdown-link>
+                                    <x-dropdown-link :href="route('types.index')">{{ __('Consumable Types') }}</x-dropdown-link>
+                                @endif
+
+                                @if($isSuper || in_array('manage-printers', $userPerms))
+                                    @if($isSuper || in_array('manage-system', $userPerms)) <hr class="my-1 border-gray-100"> @endif
+                                    <x-dropdown-link :href="route('printers.index')" class="font-bold text-gray-800">{{ __('Printers') }}</x-dropdown-link>
+                                @endif
                             </x-slot>
                         </x-dropdown>
                     </div>
-                    @endcan
+                    @endif
 
-                    @can('manage-inventory')
+                    @if($isSuper || in_array('manage-inventory', $userPerms) || in_array('manage-requests', $userPerms) || in_array('generate-reports', $userPerms) || in_array('view-dashboard', $userPerms))
                     <div class="hidden sm:flex sm:items-center sm:ms-2">
                         <x-dropdown align="left" width="48">
                             <x-slot name="trigger">
@@ -53,16 +69,24 @@
                                 </button>
                             </x-slot>
                             <x-slot name="content">
-                                <x-dropdown-link :href="route('inventory.index')" class="font-bold text-gray-800">{{ __('Inventory Stock') }}</x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.requests.index')">{{ __('Fulfillment Dashboard') }}</x-dropdown-link>
-                                <hr class="my-1">
-                                <x-dropdown-link :href="route('admin.reports.index')">{{ __('Reports & Analytics') }}</x-dropdown-link>
+                                @if($isSuper || in_array('manage-inventory', $userPerms))
+                                    <x-dropdown-link :href="route('inventory.index')" class="font-bold text-gray-800">{{ __('Inventory Stock') }}</x-dropdown-link>
+                                @endif
+
+                                @if($isSuper || in_array('manage-requests', $userPerms))
+                                    <x-dropdown-link :href="route('admin.requests.index')">{{ __('Fulfillment Dashboard') }}</x-dropdown-link>
+                                @endif
+
+                                @if($isSuper || in_array('generate-reports', $userPerms) || in_array('view-dashboard', $userPerms))
+                                    <hr class="my-1 border-gray-100">
+                                    <x-dropdown-link :href="route('admin.reports.index')">{{ __('Reports & Analytics') }}</x-dropdown-link>
+                                @endif
                             </x-slot>
                         </x-dropdown>
                     </div>
-                    @endcan
+                    @endif
 
-                    @can('manage-users')
+                    @if($isSuper || in_array('manage-users', $userPerms))
                     <div class="hidden sm:flex sm:items-center sm:ms-2">
                         <x-dropdown align="left" width="48">
                             <x-slot name="trigger">
@@ -79,7 +103,7 @@
                             </x-slot>
                         </x-dropdown>
                     </div>
-                    @endcan
+                    @endif
                 </div>
             </div>
 
@@ -129,28 +153,38 @@
                 {{ __('My Requests') }}
             </x-responsive-nav-link>
 
-            @can('manage-assets')
+            @if($isSuper || in_array('manage-printers', $userPerms) || in_array('manage-system', $userPerms))
                 <div class="px-4 py-2 mt-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50">Manage Assets</div>
-                <x-responsive-nav-link :href="route('departments.index')">{{ __('Departments') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('locations.index')">{{ __('Locations') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('printers.index')">{{ __('Printers') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('categories.index')">{{ __('Categories') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('colors.index')">{{ __('Colors') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('types.index')">{{ __('Consumable Types') }}</x-responsive-nav-link>
-            @endcan
+                @if($isSuper || in_array('manage-system', $userPerms))
+                    <x-responsive-nav-link :href="route('departments.index')">{{ __('Departments') }}</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('locations.index')">{{ __('Locations') }}</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('categories.index')">{{ __('Categories') }}</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('colors.index')">{{ __('Colors') }}</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('types.index')">{{ __('Consumable Types') }}</x-responsive-nav-link>
+                @endif
+                @if($isSuper || in_array('manage-printers', $userPerms))
+                    <x-responsive-nav-link :href="route('printers.index')">{{ __('Printers') }}</x-responsive-nav-link>
+                @endif
+            @endif
 
-            @can('manage-inventory')
+            @if($isSuper || in_array('manage-inventory', $userPerms) || in_array('manage-requests', $userPerms) || in_array('generate-reports', $userPerms) || in_array('view-dashboard', $userPerms))
                 <div class="px-4 py-2 mt-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50">Operations</div>
-                <x-responsive-nav-link :href="route('inventory.index')" class="font-bold">{{ __('Inventory Stock') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.requests.index')">{{ __('Fulfillment Dashboard') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.reports.index')">{{ __('Reports & Analytics') }}</x-responsive-nav-link>
-            @endcan
+                @if($isSuper || in_array('manage-inventory', $userPerms))
+                    <x-responsive-nav-link :href="route('inventory.index')" class="font-bold">{{ __('Inventory Stock') }}</x-responsive-nav-link>
+                @endif
+                @if($isSuper || in_array('manage-requests', $userPerms))
+                    <x-responsive-nav-link :href="route('admin.requests.index')">{{ __('Fulfillment Dashboard') }}</x-responsive-nav-link>
+                @endif
+                @if($isSuper || in_array('generate-reports', $userPerms) || in_array('view-dashboard', $userPerms))
+                    <x-responsive-nav-link :href="route('admin.reports.index')">{{ __('Reports & Analytics') }}</x-responsive-nav-link>
+                @endif
+            @endif
 
-            @can('manage-users')
+            @if($isSuper || in_array('manage-users', $userPerms))
                 <div class="px-4 py-2 mt-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50">System</div>
                 <x-responsive-nav-link :href="route('users.index')">{{ __('User Management') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.logs.index')">{{ __('Audit Logs') }}</x-responsive-nav-link>
-            @endcan
+            @endif
         </div>
 
         <div class="pt-4 pb-1 border-t border-gray-200">

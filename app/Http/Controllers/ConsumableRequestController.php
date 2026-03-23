@@ -24,40 +24,80 @@ class ConsumableRequestController extends Controller
 
     public function create()
     {
-        // Now, we only send Departments initially.
-        $departments = Department::orderBy('name')->get();
-        return view('requests.create', compact('departments'));
+        $departments = \App\Models\Department::all();
+        $locations = \App\Models\PrinterLocation::all();
+
+        // EAGER LOAD consumableTypes to link them to the frontend!
+        $printers = \App\Models\Printer::with('consumableTypes')->get();
+        $inventories = \App\Models\Inventory::with(['consumableType', 'color'])->get();
+
+        $user = Auth::user();
+
+        // CHECK FOR THE NEW PERMISSION
+        $canSubmitOnBehalf = $user->is_superuser || $user->permissions->contains('name', 'submit-on-behalf');
+
+        $users = $canSubmitOnBehalf ? \App\Models\User::orderBy('name')->get() : collect();
+
+        return view('requests.create', compact('departments', 'locations', 'printers', 'inventories', 'users', 'canSubmitOnBehalf'));
     }
 
-    public function store(Request $request)
+    public function store(\Illuminate\Http\Request $request)
     {
         $request->validate([
             'department_id' => 'required|exists:departments,id',
-            'printer_location_id' => 'required|exists:printer_locations,id',
-            'printer_id' => 'required|exists:printers,id',
+            // VALIDATION FIX: Check printer_locations table
+            'location_id' => 'required|exists:printer_locations,id',
+            'printer_id' => 'nullable|exists:printers,id',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.inventory_id' => 'required|exists:inventories,id',
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
-        $consumableRequest = ConsumableRequest::create([
-            'user_id' => Auth::id(),
-            'department_id' => $request->department_id,
-            'printer_location_id' => $request->printer_location_id,
-            'printer_id' => $request->printer_id,
-            'notes' => $request->notes,
-            'status' => 'Pending',
-        ]);
+        $submitter = Auth::user();
+        $canSubmitOnBehalf = $submitter->is_superuser || $submitter->permissions->contains('name', 'submit-on-behalf');
 
-        foreach ($request->items as $item) {
-            $consumableRequest->items()->create([
-                'inventory_id' => $item['inventory_id'],
-                'quantity' => $item['quantity'],
-            ]);
+        // Determine WHO the request actually belongs to
+        $targetUserId = $submitter->id;
+        $guestName = null;
+
+        if ($canSubmitOnBehalf && $request->filled('is_on_behalf')) {
+            if ($request->on_behalf_type === 'existing' && $request->filled('existing_user_id')) {
+                // Admin selected an existing user
+                $targetUserId = $request->existing_user_id;
+            } elseif ($request->on_behalf_type === 'new' && $request->filled('new_user_name')) {
+                // DO NOT CREATE A USER! Just log the admin's ID for tracking, and save the typed name.
+                $targetUserId = $submitter->id;
+                $guestName = $request->new_user_name;
+            }
         }
 
-        return redirect()->route('requests.index')->with('status', 'Request submitted successfully!');
+        // Create the main request
+        $consumableRequest = \App\Models\ConsumableRequest::create([
+            'user_id' => $targetUserId,
+            'guest_name' => $guestName, // Save the manual name here
+            'department_id' => $request->department_id,
+            'location_id' => $request->location_id,
+            'printer_id' => $request->printer_id,
+            'notes' => $request->notes,
+            'status' => 'Pending'
+        ]);
+
+        // Attach the items
+        foreach ($request->items as $item) {
+            // Prevent duplicates on the backend just in case
+            $exists = $consumableRequest->items()->where('inventory_id', $item['inventory_id'])->exists();
+            if (!$exists) {
+                \App\Models\RequestItem::create([
+                    'consumable_request_id' => $consumableRequest->id,
+                    'inventory_id' => $item['inventory_id'],
+                    'quantity' => $item['quantity'],
+                    'status' => 'Pending'
+                ]);
+            }
+        }
+
+        return redirect()->route('requests.index')->with('success', 'Request submitted successfully.');
     }
 
     // --- NEW AJAX METHODS ---

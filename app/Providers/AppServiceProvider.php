@@ -25,24 +25,37 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Only superusers can manage users
-        Gate::define('manage-users', function (User $user) {
-            return $user->is_superuser;
+        // ADD THIS MISSING UMBRELLA GATE:
+        \Illuminate\Support\Facades\Gate::define('manage-assets', function (\App\Models\User $user) {
+            return $user->is_superuser ||
+                $user->permissions->contains('name', 'manage-system') ||
+                $user->permissions->contains('name', 'manage-printers');
         });
 
-        // Managing Printer Locations and Printers
-        Gate::define('manage-assets', function ($user) {
-            return $user->is_superuser || $user->hasPermission('manage-assets');
+        // Your existing gates...
+        \Illuminate\Support\Facades\Gate::define('manage-printers', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'manage-printers');
         });
 
-        // Managing Inventory Stock and Thresholds
-        Gate::define('manage-inventory', function ($user) {
-            return $user->is_superuser || $user->hasPermission('manage-inventory');
+        \Illuminate\Support\Facades\Gate::define('manage-requests', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'manage-requests');
         });
 
-        // Activate the Observers
-        Inventory::observe(AuditObserver::class);
-        Printer::observe(AuditObserver::class);
-        RequestItem::observe(AuditObserver::class);
+        \Illuminate\Support\Facades\Gate::define('manage-inventory', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'manage-inventory');
+        });
+
+        \Illuminate\Support\Facades\Gate::define('manage-users', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'manage-users');
+        });
+
+        \Illuminate\Support\Facades\Gate::define('manage-system', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'manage-system');
+        });
+
+        // ADD THIS WITH YOUR OTHER GATES:
+        \Illuminate\Support\Facades\Gate::define('submit-on-behalf', function (\App\Models\User $user) {
+            return $user->is_superuser || $user->permissions->contains('name', 'submit-on-behalf');
+        });
     }
 }

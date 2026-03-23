@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConsumableRequest extends Model
 {
-    protected $fillable = ['user_id', 'department_id', 'printer_location_id', 'printer_id', 'status', 'notes'];
+    protected $fillable = ['user_id', 'guest_name', 'department_id', 'printer_location_id', 'printer_id', 'status', 'notes'];
 
     public function department()
     {
